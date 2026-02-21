@@ -31,7 +31,7 @@ Even though Python is not focused exclusively on web app backends, it has great 
 
 NodeJS has many frameworks and tools that simplify backend development, making it relatively easy to build and maintain scalable web applications.
 
-## "HackerFriendly"
+## "Hacker-Friendly"
 
  * PHP:     ⭐️⭐️⭐️⭐️
  * Python:  ⭐️⭐️
@@ -41,4 +41,12 @@ PHP might be the preferred backend for Hackers. It has a lot of functions that m
 
 Python includes character escaping by default with Flask and Django, which adds an extra layer of security. Apart from that, mistakes can be done and vulnerabilities will be possible to include by LLMs.
 
-NodeJS does not provide many security measurements by default. So it can be prone to include vulnerabilities. It usually depends on third party libraries for security additions.
+NodeJS does not provide many security measures by default. So it can be prone to include vulnerabilities. It usually depends on third party libraries for security additions.
+
+## Summary
+ 
+ * PHP      12/15⭐️
+ * Python    9/15⭐️
+ * NodeJS   13/15⭐️
+
+ Therefore NodeJS will be chosen to be used for the backend. (unless something changes up on professor's review)

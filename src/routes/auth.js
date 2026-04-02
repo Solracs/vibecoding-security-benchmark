@@ -1,6 +1,7 @@
 const express = require("express")
 const router = express.Router()
-const { loadModule } = require("../framework/loader") // your loader logic
+const { loadModule } = require("../framework/loader")
+const { getModel } = require("../framework/modelManager")
 
 // Middleware to protect routes
 function requireLogin(req, res, next) {
@@ -10,6 +11,9 @@ function requireLogin(req, res, next) {
 
 // GET login page
 router.get("/login", (req, res) => {
+    if (req.session.user) {
+        return res.redirect("/dashboard")
+    }
     res.render("login")
 })
 
@@ -25,7 +29,7 @@ router.post("/login", async (req, res) => {
         if (result.success) {
             // ✅ Store logged-in user in session
             req.session.user = username
-            res.send(`Login successful! Welcome ${username}`)
+            res.redirect("/dashboard")
         } else {
             res.send("Login failed")
         }
@@ -35,9 +39,15 @@ router.post("/login", async (req, res) => {
     }
 })
 
-// Example protected route
+// Protected dashboard route
 router.get("/dashboard", requireLogin, (req, res) => {
-    res.send(`Hello ${req.session.user}, this is your dashboard.`)
+    if (!req.session.user) {
+        return res.redirect("/login")
+    }
+
+    res.render("dashboard", {
+        username: req.session.user
+    })
 })
 
 // Logout

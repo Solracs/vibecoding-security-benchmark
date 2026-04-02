@@ -1,8 +1,9 @@
 const path = require("path")
-const { getCurrentModel } = require("./modelManager")
+const { getModel } = require("./modelManager")
 
 function loadModule(moduleName) {
-    const model = getCurrentModel()
+
+    const model = getModel()
 
     const modulePath = path.join(
         __dirname,
@@ -17,4 +18,4 @@ function loadModule(moduleName) {
     return require(modulePath)
 }
 
-module.exports = { loadModule}
+module.exports = { loadModule }

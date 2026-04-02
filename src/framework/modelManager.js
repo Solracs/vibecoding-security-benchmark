@@ -1,14 +1,14 @@
-let currentModel = process.env.DEFAULT_MODEL || "gpt"
+let currentModel = "gpt"
 
-function getCurrentModel() {
+function getModel() {
     return currentModel
 }
 
-function setCurrentModel(model) {
+function setModel(model) {
     currentModel = model
 }
 
 module.exports = {
-    getCurrentModel,
-    setCurrentModel
+    getModel,
+    setModel
 }

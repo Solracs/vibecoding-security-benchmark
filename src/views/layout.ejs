@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>AI Shop</title>
+
+    <link rel="stylesheet"
+    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+
+</head>
+
+<body>
+
+<nav class="navbar navbar-dark bg-dark">
+<div class="container d-flex justify-content-between">
+
+    <a class="navbar-brand" href="/">AI Shop</a>
+
+    <!-- MODEL SWITCHER -->
+    <form method="POST" action="/admin/switch-model" class="d-flex">
+
+        <select name="model" class="form-select me-2">
+
+            <option value="gpt">GPT</option>
+            <option value="gemini">Gemini</option>
+            <option value="local">Local</option>
+
+        </select>
+
+        <button class="btn btn-outline-light">
+            Switch
+        </button>
+
+    </form>
+
+</div>
+</nav>
+
+<div class="container mt-4">
+<%- body %>
+</div>
+
+</body>
+</html>

@@ -6,6 +6,7 @@ const session = require("express-session")
 const { getModel } = require("./framework/modelManager")
 
 const authRoutes = require("./routes/auth")
+const profileRoutes = require("./routes/profile")
 const adminRoutes = require("./routes/admin")
 
 const app = express()
@@ -29,6 +30,7 @@ app.use(express.json())
 
 app.set("view engine", "ejs")
 app.set("views", path.join(__dirname, "views"))
+app.use("/uploads", express.static(path.join(__dirname, "../uploads")))
 
 // Make current model available in ALL views
 app.use((req, res, next) => {
@@ -51,12 +53,14 @@ db.serialize(() => {
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             username TEXT UNIQUE,
-            password TEXT
-        )
+            password TEXT,
+            bio TEXT DEFAULT "BIO",
+            profile_picture TEXT DEFAULT "default_profpic.png"
+        );
     `)
 
-    db.run(`INSERT OR IGNORE INTO users(username, password) VALUES (?, ?)`, ["admin", "admin"])
-    db.run(`INSERT OR IGNORE INTO users(username, password) VALUES (?, ?)`, ["guest", "guest"])
+    db.run(`INSERT OR IGNORE INTO users(username, password, bio) VALUES (?, ?, ?)`, ["admin", "admin", "Admin's bio"])
+    db.run(`INSERT OR IGNORE INTO users(username, password, bio) VALUES (?, ?, ?)`, ["guest", "guest", "Guest's bio"])
 })
 
 // Make DB available to routes
@@ -66,6 +70,7 @@ app.locals.db = db
 // ROUTES (IMPORTANT ORDER)
 // -------------------------
 app.use("/", authRoutes)
+app.use("/", profileRoutes)
 app.use("/", adminRoutes)
 
 app.get("/", (req, res) => {

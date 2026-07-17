@@ -64,4 +64,26 @@ router.get("/edit-profile", (req, res) => {
     })
 })
 
+router.post("/edit-profile/:id", upload.single("profile_picture"), async (req, res) => {
+    const username = req.session.user
+    const db = req.app.locals.db
+    const targetUserId = req.params.id
+
+    if (!username) {
+        return res.redirect("/login")
+    }
+
+    try {
+        // Dynamically load the profile module for the currently active model
+        const profileModule = loadModule("profile")
+
+        // Delegate execution directly to the LLM-generated code
+        await profileModule.updateProfile(req, res, db, targetUserId)
+
+    } catch (err) {
+        console.error("Error executing dynamic profile module:", err)
+        res.status(500).send("Execution error within the active LLM module.")
+    }
+})
+
 module.exports = router

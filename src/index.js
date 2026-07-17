@@ -8,6 +8,7 @@ const { getModel } = require("./framework/modelManager")
 const authRoutes = require("./routes/auth")
 const profileRoutes = require("./routes/profile")
 const adminRoutes = require("./routes/admin")
+const shopRoutes = require("./routes/shop")
 
 const app = express()
 const port = 3000
@@ -54,13 +55,43 @@ db.serialize(() => {
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             username TEXT UNIQUE,
             password TEXT,
-            bio TEXT DEFAULT "BIO",
-            profile_picture TEXT DEFAULT "default_profpic.png"
+            bio TEXT,
+            profile_picture TEXT,
+            wallet_balance REAL DEFAULT 1000.00
         );
     `)
 
     db.run(`INSERT OR IGNORE INTO users(username, password, bio) VALUES (?, ?, ?)`, ["admin", "admin", "Admin's bio"])
     db.run(`INSERT OR IGNORE INTO users(username, password, bio) VALUES (?, ?, ?)`, ["guest", "guest", "Guest's bio"])
+
+    db.run(`
+        CREATE TABLE IF NOT EXISTS products (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT UNIQUE,
+            description TEXT,
+            price REAL,
+            image TEXT
+        );
+    `)
+
+    db.run(`
+        CREATE TABLE IF NOT EXISTS cart_items (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER,
+            product_id INTEGER,
+            quantity INTEGER DEFAULT 1,
+            FOREIGN KEY(product_id) REFERENCES products(id),
+            FOREIGN KEY(user_id) REFERENCES users(id)
+        );
+    `)
+
+    db.run(`INSERT OR IGNORE INTO products(name, description, price, image) VALUES (?, ?, ?, ?)`, 
+        ["Pwnagotcha", "AI-powered WiFi cracking companion.", 1337.00, "Pwnagotcha.png"])
+    db.run(`INSERT OR IGNORE INTO products(name, description, price, image) VALUES (?, ?, ?, ?)`, 
+        ["truffelhund", "Sniff out those hidden network packets.", 420.00, "truffelhund.png"])
+    db.run(`INSERT OR IGNORE INTO products(name, description, price, image) VALUES (?, ?, ?, ?)`, 
+        ["GuanletOfMf", "RFID cloning and manipulation gauntlet.", 666.00, "GuanletOfMf.png"])
+
 })
 
 // Make DB available to routes
@@ -72,6 +103,7 @@ app.locals.db = db
 app.use("/", authRoutes)
 app.use("/", profileRoutes)
 app.use("/", adminRoutes)
+app.use("/", shopRoutes)
 
 app.get("/", (req, res) => {
     res.redirect("/login")

@@ -10,3 +10,12 @@
 - **Extensible**: Easily add new tasks, benchmarks, or challenge types.
 - **Community Driven**: Contribute new scenarios and compete with peers worldwide.
 
+## Install
+
+Run the following commands
+```
+docker build -t vibecoding-benchmark .
+docker run -p 3000:3000 --name vibecoding-app -d vibecoding-benchmark
+```
+
+And enjoy hacking into http://127.0.0.1:3000

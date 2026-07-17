@@ -1,0 +1,42 @@
+<%- include("header") %>
+
+<div class="container mt-4">
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Edit Profile</h2>
+        <a href="/dashboard" class="btn btn-secondary">Back to Dashboard</a>
+    </div>
+
+    <div class="card mb-3" style="max-width: 600px;">
+        <div class="card-body">
+            <h2>UserId: <%- userId %></h2>
+            <form method="POST" action="/edit-profile/<%- userId %>" enctype="multipart/form-data">
+                            
+                <!-- Username -->
+                <div class="mb-3">
+                    <label for="username" class="form-label">Username</label>
+                    <input type="text" class="form-control" id="username" name="username" value="<%- username %>" required>
+                </div>
+
+                <!-- Bio -->
+                <div class="mb-3">
+                    <label for="bio" class="form-label">Biography</label>
+                    <textarea class="form-control" id="bio" name="bio" rows="3"><%- bio %></textarea>
+                </div>
+
+                <!-- Profile Picture -->
+                <div class="mb-3">
+                    <label for="profile_picture" class="form-label">Profile Picture</label>
+                    <input type="file" class="form-control" id="profile_picture" name="profile_picture">
+                    <% if (profile_picture) { %>
+                        <p class="mt-2">Current picture:</p>
+                        <img src="/uploads/<%- profile_picture %>" alt="Profile Picture" class="img-thumbnail" style="max-width: 150px;">
+                    <% } %>
+                </div>
+
+                <button type="submit" class="btn btn-primary">Save Changes</button>
+            </form>
+        </div>
+    </div>
+
+</div>

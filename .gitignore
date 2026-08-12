@@ -11,6 +11,13 @@ uploads/
 doc/latex/
 thesis.zip
 
+# Audit write-ups, evidence and charts — versioned on the documentation branch,
+# kept here only so the local latex build can resolve its figures
+doc/img/
+doc/audit-*
+doc/findings_chart.*
+doc/matriz_resultados_es.py
+
 # Local scratch notes
 todo.md
 .section6-sketch.md

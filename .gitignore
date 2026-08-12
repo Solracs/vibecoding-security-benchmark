@@ -1,0 +1,26 @@
+# Dependencies
+node_modules/
+
+# Runtime data (SQLite DB is created/seeded on first run)
+data/
+
+# User-submitted uploads (product images are tracked; anything else is runtime)
+uploads/
+
+# Thesis sources and build artefacts — kept out of the repo
+doc/latex/
+thesis.zip
+
+# Audit write-ups, evidence and charts — versioned on the documentation branch,
+# kept here only so the local latex build can resolve its figures
+doc/img/
+doc/audit-*
+doc/findings_chart.*
+doc/matriz_resultados_es.py
+
+# Local scratch notes
+todo.md
+.section6-sketch.md
+
+# macOS
+.DS_Store

@@ -3,7 +3,7 @@ const path = require("path")
 const sqlite3 = require("sqlite3").verbose()
 const session = require("express-session")
 
-const { getModel } = require("./framework/modelManager")
+const { getModel, listModels } = require("./framework/modelManager")
 
 const authRoutes = require("./routes/auth")
 const profileRoutes = require("./routes/profile")
@@ -11,7 +11,9 @@ const adminRoutes = require("./routes/admin")
 const shopRoutes = require("./routes/shop")
 
 const app = express()
-const port = 3000
+// Overridable so an isolated instance (e.g. an automated audit run) can be
+// started alongside the normal one without clashing on port, DB or uploads.
+const port = Number(process.env.PORT) || 3000
 
 // -------------------------
 // SESSION
@@ -31,18 +33,22 @@ app.use(express.json())
 
 app.set("view engine", "ejs")
 app.set("views", path.join(__dirname, "views"))
-app.use("/uploads", express.static(path.join(__dirname, "../uploads")))
+const uploadsDir = process.env.UPLOADS_DIR || path.join(__dirname, "../uploads")
+app.use("/uploads", express.static(uploadsDir))
+// Exposed to model implementations, which are responsible for persisting uploads.
+app.locals.uploadsDir = uploadsDir
 
-// Make current model available in ALL views
+// Make current model (and the discovered list) available in ALL views
 app.use((req, res, next) => {
     res.locals.currentModel = getModel()
+    res.locals.models = listModels()
     next()
 })
 
 // -------------------------
 // DATABASE SETUP
 // -------------------------
-const dbPath = path.join(__dirname, "../data/shop.sqlite")
+const dbPath = process.env.DB_PATH || path.join(__dirname, "../data/shop.sqlite")
 
 const db = new sqlite3.Database(dbPath, (err) => {
     if (err) console.error("DB connection error:", err)
@@ -61,8 +67,8 @@ db.serialize(() => {
         );
     `)
 
-    db.run(`INSERT OR IGNORE INTO users(username, password, bio) VALUES (?, ?, ?)`, ["admin", "admin", "Admin's bio"])
-    db.run(`INSERT OR IGNORE INTO users(username, password, bio) VALUES (?, ?, ?)`, ["guest", "guest", "Guest's bio"])
+    db.run(`INSERT OR IGNORE INTO users(username, password, bio) VALUES (?, ?, ?)`, ["admin", "admin", "bio"])
+    db.run(`INSERT OR IGNORE INTO users(username, password, bio) VALUES (?, ?, ?)`, ["guest", "guest", "bio"])
 
     db.run(`
         CREATE TABLE IF NOT EXISTS products (
@@ -86,7 +92,7 @@ db.serialize(() => {
     `)
 
     db.run(`INSERT OR IGNORE INTO products(name, description, price, image) VALUES (?, ?, ?, ?)`, 
-        ["Pwnagotcha", "AI-powered WiFi cracking companion.", 1337.00, "Pwnagotcha.png"])
+        ["Pwnagotcha", "AI-powered WiFi cracking companion.", 1337.00, "pwnagotcha.png"])
     db.run(`INSERT OR IGNORE INTO products(name, description, price, image) VALUES (?, ?, ?, ?)`, 
         ["truffelhund", "Sniff out those hidden network packets.", 420.00, "truffelhund.png"])
     db.run(`INSERT OR IGNORE INTO products(name, description, price, image) VALUES (?, ?, ?, ?)`, 

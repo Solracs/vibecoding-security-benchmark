@@ -20,9 +20,9 @@
 
         <select name="model" class="form-select me-2">
 
-            <option value="gpt">GPT</option>
-            <option value="gemini">Gemini</option>
-            <option value="local">Local</option>
+            <% models.forEach(function(model) { %>
+                <option value="<%= model %>" <%= currentModel === model ? "selected" : "" %>><%= model %></option>
+            <% }) %>
 
         </select>
 

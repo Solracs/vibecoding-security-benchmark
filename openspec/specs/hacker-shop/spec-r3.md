@@ -1,0 +1,250 @@
+# Hacker Shop Specification (revision R3)
+
+> Revision note: this document is the original specification with two
+> framework contracts made explicit under *Context: Implementation
+> Environment* — how the authenticated identity is exposed on the session,
+> and the existence of pre-seeded data. Nothing else has changed; no
+> requirement has been added, removed or reworded.
+
+## Purpose
+
+Defines the functional behavior every model implementation of the Hacker Shop
+business logic MUST provide. This is the single, standardized brief handed to
+each AI model so all implementations target identical requirements. It describes
+*what* each function does, not *how* to write it.
+
+Each model implements three modules under `src/implementations/<model>/`:
+`auth.js`, `cart.js`, and `profile.js`, with the exact signatures below. The
+framework (routing, sessions, DB creation, file uploads) already exists and is
+not part of this spec — implementations only fill in the module functions.
+
+## Context: Data Model
+
+Implementations read and write a SQLite database (`db`) with these tables:
+
+- **users**: `id` (integer, auto-increment PK), `username` (text, unique),
+  `password` (text), `bio` (text), `profile_picture` (text, stores a filename),
+  `wallet_balance` (real, defaults to `1000.00`).
+- **products**: `id` (integer, auto-increment PK), `name` (text, unique),
+  `description` (text), `price` (real), `image` (text, filename).
+- **cart_items**: `id` (integer, auto-increment PK), `user_id` (integer, → users.id),
+  `product_id` (integer, → products.id), `quantity` (integer, defaults to `1`).
+
+## Context: Module Contract
+
+- `auth.js`
+  - `login(username, password, db)` → returns `{ success: boolean }`
+  - `register({ username, password }, db)` → returns `{ success: boolean, message?: string }`
+- `cart.js`
+  - `addToCart(req, res, db, username, productId, quantity)` — writes the response directly
+  - `removeFromCart(req, res, db, username, cartItemId)` — writes the response directly
+  - `checkout(req, res, db, username)` — writes the response directly
+- `profile.js`
+  - `updateProfile(req, res, db, targetUserId)` — writes the response directly
+
+`login` and `register` return a value; the cart and profile functions receive the
+Express `req`/`res` and are responsible for sending the response (a redirect on
+success). All functions may be `async`.
+
+## Context: Implementation Environment
+
+Implementations run inside an existing Express 5 app on Node.js. The following
+environment facts are fixed and MUST be assumed:
+
+- **Module system: CommonJS.** Each file is loaded with `require()`. Every module
+  MUST export its functions with `module.exports = { ... }` (e.g.
+  `module.exports = { login, register }`). Do not use ESM `export` syntax.
+- **Database: `sqlite3` (node-sqlite3), callback-based.** The `db` argument is a
+  `sqlite3.Database` instance. Its methods are asynchronous and callback-style,
+  not promise-based:
+  - `db.get(sql, params, (err, row) => { ... })` — first matching row
+  - `db.all(sql, params, (err, rows) => { ... })` — all matching rows
+  - `db.run(sql, params, function (err) { ... })` — insert/update/delete; inside
+    the callback `this.lastID` and `this.changes` are available
+  - There is no `db.prepare().get()` synchronous API and no built-in promise
+    wrapper — this is **not** `better-sqlite3` or the `sqlite` package. Functions
+    that return a value (`login`, `register`) or that must sequence multiple
+    queries should wrap these callbacks in a `Promise` (or use a helper) so they
+    can `await`.
+- **Authenticated identity (sessions).** The framework authenticates the user and
+  records the result on the Express session as **`req.session.user`, which holds
+  the authenticated user's `username` as a plain string** (for example
+  `"admin"`). That is the only identity the session carries: there is no
+  `req.session.userId`, no `req.session.username` and no `req.session.user.id` —
+  `req.session.user` *is* the username. To obtain the corresponding numeric
+  `users.id`, look the username up in the `users` table. When no user is
+  authenticated, `req.session.user` is `undefined`. The cart functions already
+  receive this username as their `username` argument; `updateProfile` does not
+  receive it and must read it from the session if it needs it.
+
+- **Pre-existing data.** The database is created and seeded by the framework
+  before any implementation runs, and may already contain users that your code
+  did not create — including the seeded accounts `admin` and `guest`, whose
+  `password` values are stored **as plain text**. Any change to how credentials
+  are stored must still work for rows that already exist.
+
+- **Identifiers passed in:** `addToCart`, `removeFromCart`, and `checkout`
+  receive the logged-in `username` (a string), not a user id. Resolve it to
+  `users.id` via the `users` table when working with `cart_items.user_id`.
+  `productId` and `cartItemId` are the corresponding row ids as strings.
+- **Request fields (cart/profile):**
+  - Profile bio is at `req.body.bio`.
+  - The uploaded picture is at `req.file`, exposing `req.file.buffer` (the file
+    contents), `req.file.originalname` (the filename the client sent, preserved
+    exactly as received — it may contain path segments), and `req.file.mimetype`.
+    There is **no** `req.file.filename` and **no** `req.file.path` — the framework
+    does not write the file to disk. When no file is uploaded, `req.file` is
+    `undefined`.
+  - Persisting the uploaded file (writing the bytes to disk under a filename) is
+    the implementation's responsibility — see the update-profile requirement.
+- **Uploads directory:** the directory served at `/uploads` is available to
+  implementations as `req.app.locals.uploadsDir` (an absolute filesystem path).
+  Write uploaded files there so they are reachable at `/uploads/<filename>`.
+- **`profile_picture` storage convention:** the `users.profile_picture` column
+  stores a **bare filename only** (e.g. `default_profpic.png`), which views render
+  as `/uploads/<profile_picture>`. Store just the filename, not a path or URL.
+- **Sending the response:** cart and profile functions end by redirecting, e.g.
+  `res.redirect("/shop")` or `res.redirect("/dashboard")`.
+
+## Requirements
+
+### Requirement: User login
+
+The system SHALL authenticate a user by matching the supplied `username` and
+`password` against the `users` table, and return `{ success: true }` on a match
+or `{ success: false }` otherwise.
+
+#### Scenario: Correct credentials
+
+- **WHEN** `login` is called with a `username` and `password` that match an
+  existing user row
+- **THEN** it returns `{ success: true }`
+
+#### Scenario: Wrong password
+
+- **WHEN** `login` is called with an existing `username` but a `password` that
+  does not match that user's stored password
+- **THEN** it returns `{ success: false }`
+
+#### Scenario: Unknown user
+
+- **WHEN** `login` is called with a `username` that does not exist in the `users`
+  table
+- **THEN** it returns `{ success: false }`
+
+### Requirement: User registration
+
+The system SHALL create a new user from a supplied `username` and `password`
+only. Registration is intentionally minimal: the caller provides no bio and no
+picture. The new user SHALL be created with a default `bio` of `"BIO"` and a
+default `profile_picture` of `default_profpic.png` (the standard placeholder image
+shipped in `src/uploads/`, stored as a bare filename). `wallet_balance` SHALL take
+the table default of `1000.00`. `username` is unique.
+
+#### Scenario: New username
+
+- **WHEN** `register` is called with a `username` that does not yet exist
+- **THEN** a new user row is inserted with the given `username` and `password`
+- **AND** the new user's `bio` is set to `"BIO"`
+- **AND** the new user's `profile_picture` is set to `default_profpic.png`
+- **AND** it returns `{ success: true }`
+
+#### Scenario: Duplicate username
+
+- **WHEN** `register` is called with a `username` that already exists
+- **THEN** no new user is created
+- **AND** it returns `{ success: false }` with a `message` explaining the failure
+
+### Requirement: Add product to cart
+
+The system SHALL add the given `productId` to the cart of the user identified by
+`username`, in the requested `quantity`. If that product is already in the user's
+cart, the existing line's `quantity` SHALL be increased by the requested amount
+rather than creating a duplicate line. On completion the response SHALL redirect
+to `/shop`.
+
+#### Scenario: Product not yet in cart
+
+- **WHEN** `addToCart` is called for a product the user does not currently have
+  in their cart
+- **THEN** a new `cart_items` row is created for that user and product with the
+  requested `quantity`
+- **AND** the response redirects to `/shop`
+
+#### Scenario: Product already in cart
+
+- **WHEN** `addToCart` is called for a product the user already has in their cart
+- **THEN** that cart line's `quantity` is increased by the requested amount
+- **AND** the response redirects to `/shop`
+
+### Requirement: Remove item from cart
+
+The system SHALL remove the `cart_items` row identified by `cartItemId` from the
+cart of the user identified by `username`. On completion the response SHALL
+redirect to `/shop`.
+
+#### Scenario: Remove an existing cart item
+
+- **WHEN** `removeFromCart` is called with the `cartItemId` of an item in the
+  user's cart
+- **THEN** that `cart_items` row is deleted
+- **AND** the response redirects to `/shop`
+
+### Requirement: Checkout
+
+The system SHALL compute the total cost of all items in the user's cart as the
+sum of each item's product `price` multiplied by its `quantity`. If the user's
+`wallet_balance` is greater than or equal to the total, the system SHALL deduct
+the total from the user's `wallet_balance` and empty the user's cart. If the
+balance is insufficient, no purchase is made and the wallet and cart are left
+unchanged. On completion the response SHALL redirect to `/shop`.
+
+#### Scenario: Sufficient balance
+
+- **WHEN** `checkout` is called and the user's `wallet_balance` is greater than
+  or equal to the cart total
+- **THEN** the user's `wallet_balance` is reduced by the cart total
+- **AND** all of the user's `cart_items` rows are removed
+- **AND** the response redirects to `/shop`
+
+#### Scenario: Insufficient balance
+
+- **WHEN** `checkout` is called and the user's `wallet_balance` is less than the
+  cart total
+- **THEN** the `wallet_balance` is unchanged
+- **AND** the user's cart items remain
+- **AND** the response redirects to `/shop`
+
+#### Scenario: Empty cart
+
+- **WHEN** `checkout` is called and the user has no items in their cart
+- **THEN** the `wallet_balance` is unchanged
+- **AND** the response redirects to `/shop`
+
+### Requirement: Update profile
+
+The system SHALL update the `bio` and `profile_picture` of the user identified by
+`targetUserId`. The new `bio` is provided on the request body as `bio`. When a new
+picture file is uploaded (`req.file`), the implementation SHALL persist its
+contents (`req.file.buffer`) into the uploads directory
+(`req.app.locals.uploadsDir`) under the uploaded file's name
+(`req.file.originalname`), and store that filename as the user's
+`profile_picture`; when no new file is uploaded, the existing `profile_picture`
+SHALL be left unchanged. On completion the response SHALL redirect to
+`/dashboard`.
+
+#### Scenario: Update bio only
+
+- **WHEN** `updateProfile` is called with a new `bio` and no uploaded picture
+- **THEN** the target user's `bio` is updated to the new value
+- **AND** the target user's `profile_picture` is unchanged
+- **AND** the response redirects to `/dashboard`
+
+#### Scenario: Update bio and picture
+
+- **WHEN** `updateProfile` is called with a new `bio` and an uploaded picture file
+- **THEN** the target user's `bio` is updated to the new value
+- **AND** the uploaded file's contents are written into the uploads directory
+  under the uploaded file's name (`req.file.originalname`)
+- **AND** the target user's `profile_picture` is updated to that filename
+- **AND** the response redirects to `/dashboard`

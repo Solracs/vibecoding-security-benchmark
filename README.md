@@ -138,6 +138,7 @@ Burp Suite evidence screenshots ([`doc/img/`](doc/img/), indexed in
 [`FIGURES.md`](doc/img/FIGURES.md)) and the stack decision note
 ([`doc/backend.md`](doc/backend.md)).
 
+=======
 ## Install
 
 Run the following commands
@@ -151,3 +152,4 @@ And enjoy hacking into http://127.0.0.1:3000
 > ⚠️ This application is **deliberately vulnerable** and is research material.
 > Run it only in an isolated container; never expose it to a network you do not
 > control.
+=======
